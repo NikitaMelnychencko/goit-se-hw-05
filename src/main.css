@@ -1,0 +1,49 @@
+input[type=text] {
+  width: 300px;
+  border: 1px solid lightseagreen;
+  padding: 5px 10px;
+  color: darkred;
+  font-size: 16px;
+  font-family: 'Cambria', 'Cochin', 'Georgia', 'Times', 'Times New Roman', serif;
+}
+
+button {
+  border: 1px solid #ccc;
+  padding: 5px 10px;
+  font-size: 16px;
+}
+
+#subscribe {
+  color: darkblue;
+  font-size: 14px;
+  font-family: 'Courier New', 'Courier', monospace;
+  margin-top: 20px;
+}
+
+#subscribe .message {
+  margin-bottom: 16px;
+}
+
+#subscribe .rates-caption {
+  margin: 0 0 8px;
+}
+
+#subscribe table.rates {
+  border-collapse: collapse;
+}
+
+#subscribe table.rates th,
+#subscribe table.rates td {
+  border: 1px solid lightseagreen;
+  padding: 4px 10px;
+  text-align: right;
+}
+
+#subscribe table.rates th:first-child,
+#subscribe table.rates td:first-child {
+  text-align: left;
+}
+
+#subscribe table.rates th {
+  background: #e7f6f6;
+}
