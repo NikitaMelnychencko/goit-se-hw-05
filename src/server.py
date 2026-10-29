@@ -5,60 +5,20 @@ import names
 from websockets import WebSocketServerProtocol
 from websockets.exceptions import ConnectionClosedOK
 import html
-import httpx
 import json
-from datetime import datetime, timedelta
-from decorators.loger import async_loger
+from services.bank import get_exchange_rate
+from services.parser import ExchangeRateParser
+from services.view import HtmlTableView, TableView
 
 logging.basicConfig(level=logging.INFO)
 
 
-def _cell(value):
-    if value is None:
-        return "—"
-    if isinstance(value, float):
-        return f"{value:.4f}"
-    return str(value)
-
-
-def format_rates_table(payload: dict) -> str:
-    date = html.escape(str(payload.get("date", "—")))
-    base = html.escape(str(payload.get("baseCurrencyLit", "UAH")))
-    headers = ("Валюта", "НБУ продаж", "НБУ купівля", "Продаж", "Купівля")
-    head = "".join(f"<th>{html.escape(header)}</th>" for header in headers)
-
-    rows = []
-    for item in payload.get("exchangeRate") or []:
-        currency = item.get("currency")
-        if not currency:
-            continue
-        cells = (
-            currency,
-            _cell(item.get("saleRateNB")),
-            _cell(item.get("purchaseRateNB")),
-            _cell(item.get("saleRate")),
-            _cell(item.get("purchaseRate")),
-        )
-        rows.append("<tr>" + "".join(f"<td>{html.escape(cell)}</td>" for cell in cells) + "</tr>")
-
-    body = "".join(rows) or '<tr><td colspan="5">немає курсів за цю дату</td></tr>'
-    return (
-        f'<p class="rates-caption">Дата: {date} &nbsp; База: {base}</p>'
-        f'<table class="rates"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
-    )
-
-
-@async_loger
-async def get_exchange_rate(date_diff: int|None = None):
-    async with httpx.AsyncClient() as client:
-        date = datetime.now().strftime('%d.%m.%Y')
-        if date_diff:
-            date = (datetime.now() - timedelta(days=date_diff)).strftime('%d.%m.%Y')
-        response = await client.get(f'https://api.privatbank.ua/p24api/exchange_rates?json&date={date}')
-        return response.json()
-
 class Server:
     clients = set()
+
+    def __init__(self, parser: ExchangeRateParser | None = None, view: TableView | None = None):
+        self.parser = parser or ExchangeRateParser()
+        self.view = view or HtmlTableView()
 
     async def register(self, ws: WebSocketServerProtocol):
         ws.name = names.get_full_name()
@@ -94,15 +54,15 @@ class Server:
                         date_diff = int(split_message[1])
                 except ValueError:
                     return await self.send_to_clients(f"{ws.name}: Invalid command")
-                payload = await get_exchange_rate(date_diff)
-                logging.info(
-                    "Exchange rate:\n%s",
-                    json.dumps(payload, indent=4, ensure_ascii=False),
-                )
-                table = format_rates_table(payload)
-                await self.send_to_clients(
-                    f"<!--rates-->{html.escape(ws.name)}:<br>{table}"
-                )
+                if date_diff and date_diff > 10:
+                    return await self.send_to_clients(f"{ws.name}: Invalid command. Date difference must be less than 10.")
+                tasks = []
+                for i in range(date_diff):
+                    tasks.append(get_exchange_rate(i))
+                exchange_rate = await asyncio.gather(*tasks)
+                data = [self.parser.parse(item) for item in exchange_rate]
+                table = self.view.render(data)
+                await self.send_to_clients(f"<!--rates-->{html.escape(ws.name)}:<br>{table}")
             else:
                 await self.send_to_clients(f"{ws.name}: {message}")
 

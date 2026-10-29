@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local decorator logs, kept outside src so Live Server does not reload
+/logs/
