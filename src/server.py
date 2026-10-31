@@ -6,10 +6,9 @@ from websockets import WebSocketServerProtocol
 from websockets.exceptions import ConnectionClosedOK
 import html
 import json
-from services.bank import get_exchange_rate
 from services.parser import ExchangeRateParser
+from services.rates import InvalidDaysError, load_rates, parse_days
 from services.view import HtmlTableView, TableView
-
 logging.basicConfig(level=logging.INFO)
 
 
@@ -46,21 +45,13 @@ class Server:
         async for message in ws:
             split_message = message.split(' ')
             if split_message[0] == 'exchange':
-                date_diff = None
+                raw = split_message[1] if len(split_message) > 1 else 1
                 try:
-                    if len(split_message) == 1:
-                        date_diff = None
-                    else:
-                        date_diff = int(split_message[1])
-                except ValueError:
-                    return await self.send_to_clients(f"{ws.name}: Invalid command")
-                if date_diff and date_diff > 10:
-                    return await self.send_to_clients(f"{ws.name}: Invalid command. Date difference must be less than 10.")
-                tasks = []
-                for i in range(date_diff):
-                    tasks.append(get_exchange_rate(i))
-                exchange_rate = await asyncio.gather(*tasks)
-                data = [self.parser.parse(item) for item in exchange_rate]
+                    days = parse_days(raw)
+                except InvalidDaysError as error:
+                    await self.send_to_clients(f"{ws.name}: {error}")
+                    continue
+                data = await load_rates(days, self.parser)
                 table = self.view.render(data)
                 await self.send_to_clients(f"<!--rates-->{html.escape(ws.name)}:<br>{table}")
             else:

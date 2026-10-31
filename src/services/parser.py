@@ -1,4 +1,11 @@
-class ExchangeRateParser:
+from abc import ABC, abstractmethod
+
+class Parser(ABC):
+    @abstractmethod
+    def parse(self, data: dict) -> dict:
+        pass
+
+class ExchangeRateParser(Parser):
     CURRENCIES = ('USD', 'EUR')
 
     def parse(self, data: dict) -> dict:
@@ -11,10 +18,10 @@ class ExchangeRateParser:
         eur = by_currency.get('EUR', {})
         return {
             data['date']: {
-                'USD': usd.get('saleRateNB'),
-                'EUR': eur.get('saleRateNB'),
-                'USD_BUY': usd.get('purchaseRateNB'),
-                'EUR_BUY': eur.get('purchaseRateNB'),
+                'USD': usd.get('saleRate'),
+                'EUR': eur.get('saleRate'),
+                'USD_BUY': usd.get('purchaseRate'),
+                'EUR_BUY': eur.get('purchaseRate'),
             }
         }
 
