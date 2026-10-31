@@ -7,11 +7,21 @@ class Parser(ABC):
 
 class ExchangeRateParser(Parser):
     CURRENCIES = ('USD', 'EUR')
+    EMPTY_RATES = {
+        'USD': None,
+        'EUR': None,
+        'USD_BUY': None,
+        'EUR_BUY': None,
+    }
 
     def parse(self, data: dict) -> dict:
+        exchange_rate = data.get('exchangeRate') or []
+        if not exchange_rate:
+            return {data['date']: dict(self.EMPTY_RATES)}
+
         by_currency = {
             item['currency']: item
-            for item in data['exchangeRate']
+            for item in exchange_rate
             if item.get('currency') in self.CURRENCIES
         }
         usd = by_currency.get('USD', {})

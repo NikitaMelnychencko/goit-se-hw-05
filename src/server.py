@@ -6,8 +6,9 @@ from websockets import WebSocketServerProtocol
 from websockets.exceptions import ConnectionClosedOK
 import html
 import json
+from services.bank import get_exchange_rates
 from services.parser import ExchangeRateParser
-from services.rates import InvalidDaysError, load_rates, parse_days
+from services.rates import InvalidDaysError, parse_days
 from services.view import HtmlTableView, TableView
 logging.basicConfig(level=logging.INFO)
 
@@ -47,11 +48,13 @@ class Server:
             if split_message[0] == 'exchange':
                 raw = split_message[1] if len(split_message) > 1 else 1
                 try:
+                    print(raw)
                     days = parse_days(raw)
                 except InvalidDaysError as error:
                     await self.send_to_clients(f"{ws.name}: {error}")
                     continue
-                data = await load_rates(days, self.parser)
+                raw_rates = await get_exchange_rates(days)
+                data = [self.parser.parse(item) for item in raw_rates]
                 table = self.view.render(data)
                 await self.send_to_clients(f"<!--rates-->{html.escape(ws.name)}:<br>{table}")
             else:

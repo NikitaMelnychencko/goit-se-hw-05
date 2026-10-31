@@ -1,6 +1,3 @@
-from services.parser import ExchangeRateParser
-
-
 class InvalidDaysError(Exception):
     pass
 

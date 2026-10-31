@@ -29,7 +29,12 @@ class TableView(ABC):
             for date, rates in row.items():
                 cells = []
                 for _title, key in self.COLUMNS:
-                    value = date if key is None else rates[key]
+                    if key is None:
+                        value = date
+                    elif isinstance(rates, dict):
+                        value = rates.get(key)
+                    else:
+                        value = None
                     cells.append(self._cell(value))
                 table.append(tuple(cells))
         return table
